@@ -23,7 +23,7 @@ base_gate if {
 	object.get(input, "security_critical_drift_count", 0) == 0
 	input.cdc_lag_seconds <= input.rpo_seconds
 	input.target_healthy == true
-	canonical_stage contains input.target_weight
+	canonical_stage[input.target_weight]
 }
 
 # Dev: any canonical stage allowed when base gate holds and Azure not yet writer
@@ -110,7 +110,7 @@ deny_reason contains "target_unhealthy" if {
 }
 
 deny_reason contains "non_canonical_weight" if {
-	not canonical_stage contains input.target_weight
+	not canonical_stage[input.target_weight]
 }
 
 deny_reason contains "write_ownership_violation" if {
