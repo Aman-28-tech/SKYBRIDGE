@@ -1,0 +1,60 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 980 420" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif" role="img" aria-label="SKYBRIDGE cutover state machine">
+  <title>SKYBRIDGE cutover state machine (9 stages)</title>
+  <defs>
+    <marker id="nx" markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto">
+      <path d="M0,0 L9,4.5 L0,9 z" fill="#e6edf5"/>
+    </marker>
+  </defs>
+  <rect x="0" y="0" width="980" height="420" rx="12" fill="#0f141b"/>
+  <text x="30" y="38" font-size="20" font-weight="700" fill="#e6edf5">Cutover state machine — 9 recorded stages</text>
+  <text x="30" y="60" font-size="13" fill="#93a1b5">preflight revalidates everything · resumable blocks · audit entry per stage</text>
+
+  <!-- Row 1: pre-authority (5 stages) -->
+  <g font-size="12" font-weight="700" fill="#e6edf5" text-anchor="middle">
+    <rect x="30" y="100" width="160" height="64" rx="8" fill="#1a2230" stroke="#4f9cf9" stroke-width="1.5"/>
+    <text x="110" y="126">FINAL</text><text x="110" y="144">PREFLIGHT</text>
+    <rect x="214" y="100" width="160" height="64" rx="8" fill="#1a2230" stroke="#4f9cf9" stroke-width="1.5"/>
+    <text x="294" y="126">WRITES</text><text x="294" y="144">QUIESCED</text>
+    <rect x="398" y="100" width="160" height="64" rx="8" fill="#1a2230" stroke="#4f9cf9" stroke-width="1.5"/>
+    <text x="478" y="126">CDC_CATCHING</text><text x="478" y="144">_UP</text>
+    <rect x="582" y="100" width="160" height="64" rx="8" fill="#1a2230" stroke="#4f9cf9" stroke-width="1.5"/>
+    <text x="662" y="126">CDC_CAUGHT</text><text x="662" y="144">_UP</text>
+    <rect x="766" y="100" width="160" height="64" rx="8" fill="#1a2230" stroke="#4f9cf9" stroke-width="1.5"/>
+    <text x="846" y="126">FINAL</text><text x="846" y="144">VALIDATION</text>
+  </g>
+  <g stroke="#e6edf5" stroke-width="2">
+    <line x1="190" y1="132" x2="212" y2="132" marker-end="url(#nx)"/>
+    <line x1="374" y1="132" x2="396" y2="132" marker-end="url(#nx)"/>
+    <line x1="558" y1="132" x2="580" y2="132" marker-end="url(#nx)"/>
+    <line x1="742" y1="132" x2="764" y2="132" marker-end="url(#nx)"/>
+  </g>
+  <rect x="30" y="172" width="896" height="30" rx="6" fill="#12241a" stroke="#2fbf71"/>
+  <text x="478" y="192" font-size="12" font-weight="700" fill="#2fbf71" text-anchor="middle">PRE-AUTHORITY (AWS still owns writes) — blocks are safe, resumable, nothing to roll back</text>
+
+  <!-- Ownership transfer boundary -->
+  <line x1="490" y1="210" x2="490" y2="300" stroke="#d9a021" stroke-width="2" stroke-dasharray="8 5"/>
+  <text x="490" y="228" font-size="12" font-weight="700" fill="#d9a021" text-anchor="middle">ownership transfer boundary</text>
+  <text x="490" y="246" font-size="11" fill="#93a1b5" text-anchor="middle">source flips first → target flips second (CAS, exactly once)</text>
+
+  <!-- Row 2: post-authority (4 stages) -->
+  <g font-size="12" font-weight="700" fill="#e6edf5" text-anchor="middle">
+    <rect x="80" y="300" width="180" height="64" rx="8" fill="#1a2230" stroke="#d9a021" stroke-width="1.5"/>
+    <text x="170" y="326">OWNERSHIP_</text><text x="170" y="344">TRANSFERRED</text>
+    <rect x="296" y="300" width="180" height="64" rx="8" fill="#1a2230" stroke="#d9a021" stroke-width="1.5"/>
+    <text x="386" y="326">TRAFFIC_</text><text x="386" y="344">SWITCHED</text>
+    <rect x="512" y="300" width="180" height="64" rx="8" fill="#1a2230" stroke="#d9a021" stroke-width="1.5"/>
+    <text x="602" y="326">WRITES_</text><text x="602" y="344">RESUMED</text>
+    <rect x="728" y="300" width="180" height="64" rx="8" fill="#12241a" stroke="#2fbf71" stroke-width="2"/>
+    <text x="818" y="326">CUTOVER_</text><text x="818" y="344">COMPLETE</text>
+  </g>
+  <g stroke="#e6edf5" stroke-width="2">
+    <line x1="260" y1="332" x2="294" y2="332" marker-end="url(#nx)"/>
+    <line x1="476" y1="332" x2="510" y2="332" marker-end="url(#nx)"/>
+    <line x1="692" y1="332" x2="726" y2="332" marker-end="url(#nx)"/>
+  </g>
+  <line x1="846" y1="164" x2="846" y2="298" stroke="#e6edf5" stroke-width="1.5" stroke-dasharray="4 4"/>
+  <line x1="846" y1="298" x2="170" y2="298" stroke="#e6edf5" stroke-width="1.5" stroke-dasharray="4 4" marker-end="url(#nx)"/>
+
+  <rect x="80" y="372" width="828" height="30" rx="6" fill="#241d1d" stroke="#e5534b"/>
+  <text x="494" y="392" font-size="12" font-weight="700" fill="#e5534b" text-anchor="middle">POST-AUTHORITY (Azure owns writes) — traffic-only rollback BLOCKED · recovery is forward-fix only</text>
+</svg>

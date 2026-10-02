@@ -1,0 +1,117 @@
+version: 1
+capabilities:
+  - id: kubernetes.multi_zone
+    provider: azure
+    service: aks
+    supported: true
+    constraints:
+      min_zones: 3
+    evidence:
+      - type: provider_documentation
+        ref: https://learn.microsoft.com/azure/aks/
+      - type: integration_test
+        ref: tests/integration/compatibility/aks_multi_zone.yaml
+
+  - id: postgresql.private_networking
+    provider: azure
+    service: azure-database-for-postgresql
+    supported: true
+    constraints:
+      private_network_required: true
+    evidence:
+      - type: provider_documentation
+        ref: https://learn.microsoft.com/azure/postgresql/
+
+  - id: postgresql.extensions
+    provider: azure
+    service: azure-database-for-postgresql
+    supported: true
+    constraints:
+      engine: postgresql
+      major_version: "17"
+      required_extensions: []
+    evidence:
+      - type: provider_documentation
+        ref: https://learn.microsoft.com/azure/postgresql/
+      - type: integration_test
+        ref: tests/integration/compatibility/pg_extensions.yaml
+
+  - id: network.private_connectivity
+    provider: azure
+    service: vnet
+    supported: true
+    constraints:
+      private_data_plane_required: true
+    evidence:
+      - type: provider_documentation
+        ref: https://learn.microsoft.com/azure/virtual-network/
+      - type: integration_test
+        ref: tests/integration/compatibility/vnet_private.yaml
+
+  - id: object.storage
+    provider: azure
+    service: blob-storage
+    supported: true
+    constraints:
+      identity_model: logical-key-plus-sha256
+      provider_versioning_required: false
+    evidence:
+      - type: provider_documentation
+        ref: https://learn.microsoft.com/azure/storage/blobs/
+      - type: integration_test
+        ref: tests/integration/compatibility/blob_manifest.yaml
+
+  - id: queue.at_least_once
+    provider: azure
+    service: service-bus
+    supported: true
+    constraints:
+      delivery: at_least_once
+      ordering_required: false
+      duplicate_safe_consumer_required: true
+    evidence:
+      - type: provider_documentation
+        ref: https://learn.microsoft.com/azure/service-bus-messaging/
+      - type: integration_test
+        ref: tests/integration/compatibility/queue_dedupe.yaml
+
+  - id: identity.workload
+    provider: azure
+    service: entra-workload-id
+    supported: true
+    constraints:
+      least_privilege: true
+      federation: oidc-or-managed-identity
+    evidence:
+      - type: provider_documentation
+        ref: https://learn.microsoft.com/entra/workload-id/
+      - type: integration_test
+        ref: tests/integration/compatibility/workload_identity.yaml
+
+  - id: routing.weighted_canary
+    provider: azure
+    service: front-door-standard
+    supported: true
+    constraints:
+      external_origin_support: true
+      weighted_routing: true
+      health_probes: true
+    evidence:
+      - type: provider_documentation
+        ref: https://learn.microsoft.com/en-us/azure/frontdoor/routing-methods
+      - type: integration_test
+        ref: tests/integration/compatibility/frontdoor_canary.yaml
+
+  - id: observability.metrics
+    provider: azure
+    service: azure-monitor
+    supported: true
+    constraints:
+      metrics: true
+      logs: true
+      traces_via_otel: true
+    evidence:
+      - type: provider_documentation
+        ref: https://learn.microsoft.com/azure/azure-monitor/
+      - type: integration_test
+        ref: tests/integration/compatibility/monitor_otel.yaml

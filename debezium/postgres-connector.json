@@ -1,0 +1,24 @@
+{
+  "name": "cloudshop-pg-connector",
+  "config": {
+    "connector.class": "io.debezium.connector.postgresql.PostgresConnector",
+    "database.hostname": "cloudshop-db",
+    "database.port": "5432",
+    "database.user": "cloudshop",
+    "database.password": "cloudshop",
+    "database.dbname": "cloudshop",
+    "database.server.name": "cloudshop",
+    "table.include.list": "public.users,public.products,public.orders,public.order_items",
+    "plugin.name": "pgoutput",
+    "slot.name": "skybridge_cdc",
+    "publication.name": "skybridge_pub",
+    "publication.autocreate.mode": "filtered",
+    "topic.prefix": "cloudshop",
+    "key.converter": "org.apache.kafka.connect.json.JsonConverter",
+    "value.converter": "org.apache.kafka.connect.json.JsonConverter",
+    "key.converter.schemas.enable": "false",
+    "value.converter.schemas.enable": "false",
+    "snapshot.mode": "initial",
+    "tombstones.on.delete": "false"
+  }
+}

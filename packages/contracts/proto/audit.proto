@@ -1,0 +1,26 @@
+syntax = "proto3";
+
+package skybridge.audit.v1;
+
+import "google/protobuf/timestamp.proto";
+
+// AuditEvent mirrors DOMAIN_MODEL.md AuditEvent. Never reuse deleted field numbers.
+
+message AuditEvent {
+  string id = 1;                      // event_id
+  string run_id = 2;
+  string workload_id = 3;
+  string actor_type = 4;              // human|agent|system
+  string actor_id = 5;
+  string action = 6;
+  string resource = 7;
+  string policy_bundle_version = 8;
+  string policy_decision = 9;         // allow|deny|approval_required
+  string approval_id = 10;
+  string result = 11;                 // success|failure|denied
+  string metadata_json = 12;
+  google.protobuf.Timestamp timestamp = 13;
+  string request_id = 14;
+  string idempotency_key = 15;
+  int32 schema_version = 16;
+}

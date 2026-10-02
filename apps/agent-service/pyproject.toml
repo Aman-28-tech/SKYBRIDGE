@@ -1,0 +1,7 @@
+# SKYBRIDGE agent-service (Python + LangGraph) — Phase 10 target.
+# Phase 2 baseline: package layout + evidence-cited output schemas only.
+[project]
+name = "skybridge-agent-service"
+version = "0.1.0"
+requires-python = ">=3.12"
+dependencies = []

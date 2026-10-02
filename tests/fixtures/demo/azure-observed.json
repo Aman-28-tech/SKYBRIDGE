@@ -1,0 +1,100 @@
+{
+  "fixture": "skybridge local multi-cloud demo: Azure target observed state",
+  "provider": "azure",
+  "environment": "dev",
+  "workload": "cloudshop",
+  "authority": "standby",
+  "note": "Deterministic local fixture. Hostnames are example.invalid; there is no credential material and no real subscription IDs, no cloud reads.",
+  "subscription": "00000000-0000-4000-8000-000000000000",
+  "tenant": "00000000-0000-4000-8000-000000000001",
+  "region": "westeurope",
+  "components": {
+    "compute": {
+      "resource_id": "/subscriptions/00000000-0000-4000-8000-000000000000/resourceGroups/rg-cloudshop-dev/providers/Microsoft.ContainerService/managedClusters/cloudshop-dev-aks",
+      "orchestrator": "kubernetes",
+      "replicas": 2,
+      "cpu_millicores": 500,
+      "memory_mib": 512,
+      "kubernetes_version": "1.30",
+      "endpoint": "https://aks-cloudshop-dev.example.invalid",
+      "status": "active"
+    },
+    "database": {
+      "resource_id": "/subscriptions/00000000-0000-4000-8000-000000000000/resourceGroups/rg-cloudshop-dev/providers/Microsoft.DBforPostgreSQL/flexibleServers/cloudshop-dev-pg",
+      "engine": "postgresql",
+      "major_version": "17",
+      "storage_gib": 20,
+      "extensions": [],
+      "private_networking": true,
+      "publicly_accessible": false,
+      "endpoint": "cloudshop-dev-pg.example.invalid",
+      "status": "available"
+    },
+    "cache": {
+      "resource_id": "/subscriptions/00000000-0000-4000-8000-000000000000/resourceGroups/rg-cloudshop-dev/providers/Microsoft.Cache/redis/cloudshop-dev-redis",
+      "engine": "redis",
+      "authoritative": false,
+      "warm_strategy": "lazy",
+      "ttl_seconds": 300,
+      "key_format": "product:{id}",
+      "endpoint": "cloudshop-dev-redis.example.invalid",
+      "status": "available"
+    },
+    "object-storage": {
+      "resource_id": "/subscriptions/00000000-0000-4000-8000-000000000000/resourceGroups/rg-cloudshop-dev/storageAccounts/stcloudshopdev",
+      "required": true,
+      "versioning_required": true,
+      "version_id_identity": false,
+      "identity_model": "logical-key-plus-sha256",
+      "endpoint": "https://stcloudshopdev.blob.example.invalid",
+      "status": "available"
+    },
+    "queue": {
+      "resource_id": "/subscriptions/00000000-0000-4000-8000-000000000000/resourceGroups/rg-cloudshop-dev/providers/Microsoft.ServiceBus/namespaces/cloudshop-dev-sb",
+      "delivery": "at_least_once",
+      "duplicate_safe_consumer": true,
+      "ordering": "no global ordering assumed",
+      "endpoint": "https://cloudshop-dev-sb.example.invalid",
+      "status": "available"
+    },
+    "identity": {
+      "resource_id": "/subscriptions/00000000-0000-4000-8000-000000000000/resourceGroups/rg-cloudshop-dev/providers/Microsoft.ManagedIdentity/userAssignedIdentities/cloudshop-dev-id",
+      "least_privilege": true,
+      "federation": "oidc-or-managed-identity",
+      "long_lived_credentials": false,
+      "status": "active"
+    },
+    "network": {
+      "resource_id": "/subscriptions/00000000-0000-4000-8000-000000000000/resourceGroups/rg-cloudshop-dev/providers/Microsoft.Network/virtualNetworks/cloudshop-dev-vnet",
+      "private_data_plane": true,
+      "isolation": "default-deny",
+      "public_database_endpoints": false,
+      "status": "available"
+    },
+    "routing": {
+      "resource_id": "/subscriptions/00000000-0000-4000-8000-000000000000/resourceGroups/rg-cloudshop-dev/providers/Microsoft.Cdn/profiles/cloudshop-dev-fd",
+      "origins": ["aws", "azure"],
+      "canary_stages": [0, 1, 5, 25, 50, 100],
+      "endpoint": "https://cloudshop-dev.example.invalid",
+      "status": "active"
+    },
+    "observability": {
+      "resource_id": "/subscriptions/00000000-0000-4000-8000-000000000000/resourceGroups/rg-cloudshop-dev/providers/Microsoft.Monitor/accounts/cloudshop-dev-amw",
+      "correlation": true,
+      "metrics": true,
+      "logs": true,
+      "traces": true,
+      "status": "active"
+    },
+    "security": {
+      "managed_identity": true,
+      "encryption_at_rest": true,
+      "tls": true,
+      "private_endpoints": true,
+      "audit_export": true,
+      "network_policy": "default-deny",
+      "long_lived_credentials": false,
+      "status": "enforced"
+    }
+  }
+}

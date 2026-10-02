@@ -1,0 +1,78 @@
+{
+  "snapshot_version": 1,
+  "observed_at": "2026-09-25T00:00:00Z",
+  "components": {
+    "compute": {
+      "orchestrator": "kubernetes",
+      "replicas": 2,
+      "cpu_millicores": 250,
+      "memory_mib": 512
+    },
+    "database": {
+      "engine": "postgresql",
+      "major_version": "16",
+      "storage_gib": 10,
+      "extensions": [],
+      "private_networking": true,
+      "publicly_accessible": true,
+      "prerequisite_validated": true
+    },
+    "cache": {
+      "authoritative": true,
+      "ttl_seconds": 60,
+      "warm_strategy": "eager"
+    },
+    "object-storage": {
+      "required": true,
+      "versioning_required": false,
+      "identity_model": "provider-version-id",
+      "version_id_identity": false
+    },
+    "queue": {
+      "delivery": "at_most_once",
+      "duplicate_safe_consumer": false
+    },
+    "identity": {
+      "federation": "static-access-key",
+      "least_privilege": false,
+      "long_lived_credentials": true
+    },
+    "network": {
+      "private_data_plane": true,
+      "isolation": "allow-all",
+      "public_database_endpoints": true
+    },
+    "routing": {
+      "origins": [
+        "azure"
+      ],
+      "canary_stages": [
+        0,
+        100
+      ]
+    },
+    "observability": {
+      "correlation": [
+        "run_id"
+      ],
+      "metrics": false,
+      "logs": true,
+      "traces": false
+    },
+    "security": {
+      "managed_identity": false,
+      "tls": false,
+      "network_policy": "allow-all",
+      "private_endpoints": false,
+      "audit_export": false,
+      "long_lived_credentials": true,
+      "encryption_at_rest": true
+    },
+    "shadow-ai": {
+      "model": "unmodeled-experiment"
+    },
+    "database_extra": {
+      "note": "unmodeled"
+    }
+  }
+}

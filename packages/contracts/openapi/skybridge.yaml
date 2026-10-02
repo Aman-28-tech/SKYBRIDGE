@@ -1,0 +1,1323 @@
+openapi: 3.1.0
+info:
+  title: SKYBRIDGE Control Plane API
+  version: 1.0.0
+  description: >-
+    v1 control-plane HTTP contract. Auth: JWT bearer (OIDC). All errors use
+    ErrorEnvelope. Mutations require Idempotency-Key. Versioning: /v1 -> /v2
+    for breaking changes.
+servers:
+  - url: /api
+security:
+  - bearerAuth: []
+tags:
+  - name: workloads
+  - name: migrations
+  - name: compatibility
+  - name: drift
+  - name: cutover
+paths:
+  /v1/workloads:
+    get:
+      tags: [workloads]
+      summary: List workloads
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 50
+        - name: cursor
+          in: query
+          schema:
+            type: string
+            description: Opaque cursor from previous next_cursor
+      responses:
+        "200":
+          description: Workloads
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaginatedWorkloads"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    post:
+      tags: [workloads]
+      summary: Register workload
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CanonicalWorkload"
+      responses:
+        "201":
+          description: Registered
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Workload"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "409":
+          description: Idempotency conflict
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+  /v1/workloads/{workloadId}:
+    get:
+      tags: [workloads]
+      summary: Get workload
+      parameters:
+        - $ref: "#/components/parameters/WorkloadId"
+      responses:
+        "200":
+          description: Workload
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Workload"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /v1/workloads/{workloadId}/compatibility:
+    get:
+      tags: [compatibility]
+      summary: Get latest compatibility report
+      parameters:
+        - $ref: "#/components/parameters/WorkloadId"
+      responses:
+        "200":
+          description: Compatibility report
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CompatibilityReport"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    post:
+      tags: [compatibility]
+      summary: Evaluate compatibility
+      parameters:
+        - $ref: "#/components/parameters/WorkloadId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CompatibilityRequest"
+      responses:
+        "202":
+          description: Evaluation started
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CompatibilityReport"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+  /v1/workloads/{workloadId}/plan:
+    get:
+      tags: [planning]
+      summary: Get latest target migration plan
+      parameters:
+        - $ref: "#/components/parameters/WorkloadId"
+      responses:
+        "200":
+          description: Target migration plan
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TargetMigrationPlan"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    post:
+      tags: [planning]
+      summary: Generate target migration plan (planning only; provisions nothing)
+      parameters:
+        - $ref: "#/components/parameters/WorkloadId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PlanRequest"
+      responses:
+        "202":
+          description: Target migration plan
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TargetMigrationPlan"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "409":
+          description: Idempotency conflict or stale compatibility report
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+  /v1/workloads/{workloadId}/readiness:
+    post:
+      tags: [policy]
+      summary: Evaluate migration readiness (analysis only; authorizes nothing, mutates nothing)
+      parameters:
+        - $ref: "#/components/parameters/WorkloadId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReadinessRequest"
+      responses:
+        "200":
+          description: Policy decision (allow, deny, or approval_required)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReadinessDecision"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          description: Workload not found, or no target plan yet
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "409":
+          description: Idempotency conflict, or stale/missing policy evidence
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+  /v1/workloads/{workloadId}/approvals:
+    get:
+      tags: [approval]
+      summary: List approvals
+      parameters:
+        - $ref: "#/components/parameters/WorkloadId"
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [pending, approved, rejected]
+      responses:
+        "200":
+          description: Approvals
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaginatedApprovals"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          description: Workload not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+    post:
+      tags: [approval]
+      summary: Request approval for a policy-gated action (creates pending approval only; executes nothing)
+      parameters:
+        - $ref: "#/components/parameters/WorkloadId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ApprovalRequest"
+      responses:
+        "201":
+          description: Pending approval
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Approval"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          description: Workload not found, or no target plan yet
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "409":
+          description: Policy deny/allow (nothing to approve), stale evidence, or idempotency conflict
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+  /v1/workloads/{workloadId}/approvals/{approvalId}/decision:
+    post:
+      tags: [approval]
+      summary: Decide a pending approval (human actor distinct from requester only)
+      parameters:
+        - $ref: "#/components/parameters/WorkloadId"
+        - name: approvalId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ApprovalDecisionRequest"
+      responses:
+        "200":
+          description: Decided approval
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Approval"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          description: Decider not authorized (non-human or self-approval)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "404":
+          description: Workload or approval not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "409":
+          description: Already settled, expired, stale evidence, or idempotency conflict
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+  /v1/workloads/{workloadId}/drift:
+    get:
+      tags: [drift]
+      summary: List drift reports
+      parameters:
+        - $ref: "#/components/parameters/WorkloadId"
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [open, acknowledged, resolved, ignored]
+      responses:
+        "200":
+          description: Drift reports
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaginatedDrift"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          description: Workload not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+    post:
+      tags: [drift]
+      summary: Evaluate drift against an observed snapshot (detection only; remediates nothing)
+      parameters:
+        - $ref: "#/components/parameters/WorkloadId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ObservedSnapshot"
+      responses:
+        "202":
+          description: Drift report
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DriftReport"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          description: Workload not found, or no target plan yet
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "409":
+          description: Idempotency conflict or stale target plan
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+  /v1/migrations:
+    post:
+      tags: [migrations]
+      summary: Create migration run
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateMigrationRequest"
+      responses:
+        "202":
+          description: Migration started
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MigrationRun"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          description: Idempotency conflict
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+  /v1/migrations/{migrationId}:
+    get:
+      tags: [migrations]
+      summary: Get migration status
+      parameters:
+        - $ref: "#/components/parameters/MigrationId"
+      responses:
+        "200":
+          description: Migration status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MigrationRun"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /v1/migrations/{migrationId}/execute:
+    post:
+      tags: [execution]
+      summary: Start a Temporal-backed mock stage execution (no cloud mutation; mock activities only)
+      parameters:
+        - $ref: "#/components/parameters/MigrationId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ExecuteRequest"
+      responses:
+        "202":
+          description: Execution started
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Execution"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: Policy denial, stale evidence, competing execution, or idempotency conflict
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "503":
+          description: Execution plane unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+  /v1/migrations/{migrationId}/execution:
+    get:
+      tags: [execution]
+      summary: Get latest execution with live status
+      parameters:
+        - $ref: "#/components/parameters/MigrationId"
+      responses:
+        "200":
+          description: Execution status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ExecutionStatus"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /v1/migrations/{migrationId}/rehearsal:
+    post:
+      tags: [migrations]
+      summary: Start rehearsal (ephemeral target, no production cutover)
+      parameters:
+        - $ref: "#/components/parameters/MigrationId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      responses:
+        "202":
+          description: Rehearsal started
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /v1/migrations/{migrationId}/validation:
+    post:
+      tags: [migrations]
+      summary: Run validation suite
+      parameters:
+        - $ref: "#/components/parameters/MigrationId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      responses:
+        "202":
+          description: Validation started
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+  /v1/migrations/{migrationId}/audit:
+    get:
+      tags: [migrations]
+      summary: Chronological migration-scoped audit trail (read-only timeline source)
+      parameters:
+        - $ref: "#/components/parameters/MigrationId"
+      responses:
+        "200":
+          description: Audit entries for the migration
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaginatedAuditEvents"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /v1/migrations/{migrationId}/summary:
+    get:
+      tags: [migrations]
+      summary: Aggregated read-only console view (lifecycle, cutover timeline, CDC, ownership, safety; no mutation)
+      parameters:
+        - $ref: "#/components/parameters/MigrationId"
+      responses:
+        "200":
+          description: Console summary derived strictly from stored evidence
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /v1/workloads/{workloadId}/migrations:
+    get:
+      tags: [migrations]
+      summary: List migration runs for a workload (read-only console discovery)
+      parameters:
+        - $ref: "#/components/parameters/WorkloadId"
+      responses:
+        "200":
+          description: Migration runs for the workload
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /v1/migrations/{migrationId}/cutover:
+    post:
+      tags: [cutover]
+      summary: Request a cutover stage (canonical weights 0/1/5/25/50/100)
+      parameters:
+        - $ref: "#/components/parameters/MigrationId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CutoverRequest"
+      responses:
+        "202":
+          description: Cutover request accepted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CutoverResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          description: Migration gate failed or idempotency conflict
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+  /v1/migrations/{migrationId}/rollback:
+    post:
+      tags: [cutover]
+      summary: Request rollback (pre-write only unless reverse sync ready)
+      parameters:
+        - $ref: "#/components/parameters/MigrationId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RollbackRequest"
+      responses:
+        "202":
+          description: Rollback started
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          description: Post-write rollback blocked
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: opaque-token
+      description: Local/dev bearer token (H-1 remediation, enforced). The server maps the token to a principal (actor_id, actor_type, admin) from SKYBRIDGE_LOCAL_TOKENS; X-Actor-Id/X-Actor-Type headers are never trusted. Mutating endpoints require authentication (401) plus workload/migration authorization (403). Production OIDC/mTLS is DEFERRED.
+  parameters:
+    MigrationId:
+      name: migrationId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    WorkloadId:
+      name: workloadId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      schema:
+        type: string
+        minLength: 16
+        maxLength: 128
+      description: Mandatory for POST/PUT/PATCH mutations. SHA-256 fingerprint stored server-side; same key+different body -> 409.
+  schemas:
+    Workload:
+      type: object
+      required: [id, name, schema_version, lifecycle_state]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        schema_version:
+          type: integer
+        lifecycle_state:
+          type: string
+          enum: [registered, ready, migrating, failed, retired]
+    CanonicalWorkload:
+      type: object
+      description: Validated against canonical-workload.schema.json (schema_version 1).
+      required: [schema_version, name, compute, database, cache, object_storage, queue, requirements]
+      properties:
+        schema_version:
+          type: integer
+          const: 1
+        name:
+          type: string
+        compute:
+          type: object
+        database:
+          type: object
+        cache:
+          type: object
+        object_storage:
+          type: object
+        queue:
+          type: object
+        requirements:
+          type: object
+    PaginatedWorkloads:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/Workload"
+        next_cursor:
+          type: string
+          nullable: true
+    CompatibilityCheck:
+      type: object
+      required: [requirement, target_capability, status, evidence, assumptions]
+      properties:
+        requirement:
+          type: string
+        target_capability:
+          type: string
+        status:
+          type: string
+          enum: [pass, conditional, unknown, block]
+        evidence:
+          type: array
+          items:
+            type: object
+        assumptions:
+          type: array
+          items:
+            type: string
+    CompatibilityReport:
+      type: object
+      required: [id, workload_id, target_provider, status, checks]
+      properties:
+        id:
+          type: string
+          format: uuid
+        workload_id:
+          type: string
+          format: uuid
+        target_provider:
+          type: string
+          enum: [azure]
+        status:
+          type: string
+          enum: [pass, conditional, unknown, block]
+        checks:
+          type: array
+          items:
+            $ref: "#/components/schemas/CompatibilityCheck"
+    CompatibilityRequest:
+      type: object
+      required: [target_provider]
+      properties:
+        target_provider:
+          type: string
+          enum: [azure]
+        target_region:
+          type: string
+    PlanRequest:
+      type: object
+      required: [target_provider]
+      properties:
+        target_provider:
+          type: string
+          enum: [azure]
+    ReadinessRequest:
+      type: object
+      required: [target_weight]
+      properties:
+        action:
+          type: string
+          default: shift_traffic
+          description: Only shift_traffic is supported in v1
+        environment:
+          type: string
+          enum: [local, dev, staging, experiment, production-like]
+          default: dev
+        target_weight:
+          type: integer
+          enum: [0, 1, 5, 25, 50, 100]
+        validation_status:
+          type: string
+          default: passed
+        cdc_lag_seconds:
+          type: integer
+          default: 8
+        target_healthy:
+          type: boolean
+          default: true
+        write_ownership:
+          type: string
+          default: aws
+        read_only_canary:
+          type: boolean
+          default: true
+        ownership_transfer_verified:
+          type: boolean
+          default: false
+        reverse_sync_ready:
+          type: boolean
+          default: false
+        approval:
+          type: string
+          default: none
+    PolicyGateResult:
+      type: object
+      required: [name, result, reason]
+      properties:
+        name:
+          type: string
+        result:
+          type: string
+          enum: [pass, fail, warn]
+        reason:
+          type: string
+    ReadinessDecision:
+      type: object
+      required: [decision, gates, reasons, policy_bundle_version, policy_input_hash]
+      properties:
+        decision:
+          type: string
+          enum: [allow, deny, approval_required]
+          description: Deny is fail-closed; approval_required needs explicit approval; nothing here authorizes a mutation by itself
+        gates:
+          type: array
+          items:
+            $ref: "#/components/schemas/PolicyGateResult"
+        reasons:
+          type: array
+          items:
+            type: string
+        policy_bundle_version:
+          type: string
+        policy_input_hash:
+          type: string
+          description: SHA-256 of the canonical policy input JSON
+        inputs:
+          type: object
+          description: Canonical policy input that was evaluated
+    ApprovalRequest:
+      type: object
+      required: [target_weight]
+      properties:
+        action:
+          type: string
+          default: shift_traffic
+        environment:
+          type: string
+          enum: [local, dev, staging, experiment, production-like]
+          default: dev
+        target_weight:
+          type: integer
+          enum: [0, 1, 5, 25, 50, 100]
+        validation_status:
+          type: string
+          default: passed
+        cdc_lag_seconds:
+          type: integer
+          default: 8
+        target_healthy:
+          type: boolean
+          default: true
+        write_ownership:
+          type: string
+          default: aws
+        read_only_canary:
+          type: boolean
+          default: true
+    ApprovalDecisionRequest:
+      type: object
+      required: [decision]
+      properties:
+        decision:
+          type: string
+          enum: [approved, rejected]
+    Approval:
+      type: object
+      required: [id, workload_id, action, risk, decision, requested_by, policy_input_hash, target_weight, environment]
+      properties:
+        id:
+          type: string
+          format: uuid
+        workload_id:
+          type: string
+          format: uuid
+        migration_id:
+          type: string
+          format: uuid
+        action:
+          type: string
+        risk:
+          type: string
+          enum: [low, medium, high, critical]
+        decision:
+          type: string
+          enum: [pending, approved, rejected]
+        requested_by:
+          type: string
+        decided_by:
+          type: string
+        policy_bundle_version:
+          type: string
+        policy_input_hash:
+          type: string
+        target_provider:
+          type: string
+        plan_id:
+          type: string
+          format: uuid
+        compatibility_report_id:
+          type: string
+          format: uuid
+        drift_report_id:
+          type: string
+          format: uuid
+        target_weight:
+          type: integer
+        environment:
+          type: string
+        expires_at:
+          type: string
+        decided_at:
+          type: string
+    PaginatedApprovals:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/Approval"
+    PlanComponent:
+      type: object
+      required: [key, logical_requirement, target_capability, target_service, compatibility_status, provisioning_mode]
+      properties:
+        key:
+          type: string
+        logical_requirement:
+          type: string
+        target_capability:
+          type: string
+        target_service:
+          type: string
+        desired_configuration:
+          type: object
+        dependencies:
+          type: array
+          items:
+            type: string
+        security_requirements:
+          type: array
+          items:
+            type: string
+        evidence:
+          type: array
+          items:
+            type: object
+        compatibility_status:
+          type: string
+          enum: [pass, conditional, unknown, block]
+        assumptions:
+          type: array
+          items:
+            type: string
+        blockers:
+          type: array
+          items:
+            type: string
+        validation_gate:
+          type: string
+        provisioning_mode:
+          type: string
+          enum: [auto, gated, describe-only, blocked]
+    TargetMigrationPlan:
+      type: object
+      required: [id, workload_id, target_provider, overall_status, components]
+      properties:
+        id:
+          type: string
+          format: uuid
+        workload_id:
+          type: string
+          format: uuid
+        source_provider:
+          type: string
+        target_provider:
+          type: string
+          enum: [azure]
+        canonical_spec_version:
+          type: integer
+        compatibility_report_id:
+          type: string
+          format: uuid
+        compatibility_registry_version:
+          type: integer
+        planner_version:
+          type: string
+        overall_status:
+          type: string
+          enum: [pass, conditional, unknown, block]
+        components:
+          type: array
+          items:
+            $ref: "#/components/schemas/PlanComponent"
+        dependencies:
+          type: array
+          items:
+            type: string
+        assumptions:
+          type: array
+          items:
+            type: string
+        blockers:
+          type: array
+          items:
+            type: string
+        validation_gates:
+          type: array
+          items:
+            type: string
+    DriftReport:
+      type: object
+      required: [id, workload_id, severity, status]
+      properties:
+        id:
+          type: string
+          format: uuid
+        workload_id:
+          type: string
+          format: uuid
+        severity:
+          type: string
+          enum: [informational, blocking, security_critical]
+        status:
+          type: string
+          enum: [open, acknowledged, resolved, ignored]
+        desired_reference:
+          type: string
+          description: Target plan ID the evaluation compared against
+        observed_reference:
+          type: string
+          description: Deterministic observed-snapshot ID
+        drift_gate:
+          type: string
+          enum: [clear, blocking, security_critical]
+          description: Machine-readable cutover-gate input; clear means only "no drift-based blocker detected", never migration authorization
+        findings:
+          type: array
+          items:
+            $ref: "#/components/schemas/DriftFinding"
+        planner_version:
+          type: string
+        registry_version:
+          type: integer
+        snapshot_version:
+          type: integer
+        evaluator_version:
+          type: string
+    DriftFinding:
+      type: object
+      required: [finding_id, severity, component, path, reason]
+      properties:
+        finding_id:
+          type: string
+        severity:
+          type: string
+          enum: [informational, blocking, security_critical]
+        component:
+          type: string
+        path:
+          type: string
+        expected_value: {}
+        observed_value: {}
+        reason:
+          type: string
+        evidence:
+          type: array
+          items:
+            type: object
+        remediation_hint:
+          type: string
+          description: Descriptive guidance only; never an executable action
+    ObservedSnapshot:
+      type: object
+      required: [snapshot_version, components]
+      properties:
+        snapshot_version:
+          type: integer
+          const: 1
+        observed_at:
+          type: string
+          description: Informational timestamp; excluded from snapshot identity
+        components:
+          type: object
+          description: Provider-neutral observed target state keyed by plan component key
+          additionalProperties: true
+    ExecuteRequest:
+      type: object
+      required: [target_weight]
+      properties:
+        target_weight:
+          type: integer
+          enum: [0, 1, 5, 25, 50, 100]
+        approval_id:
+          type: string
+          format: uuid
+          description: Required when the policy decision is approval_required
+        environment:
+          type: string
+          enum: [local, dev, staging, experiment, production-like]
+          default: dev
+        validation_status:
+          type: string
+          default: passed
+        cdc_lag_seconds:
+          type: integer
+          default: 8
+        target_healthy:
+          type: boolean
+          default: true
+        write_ownership:
+          type: string
+          default: aws
+        read_only_canary:
+          type: boolean
+          default: true
+    Execution:
+      type: object
+      required: [workflow_id, run_id, migration_id, status]
+      properties:
+        workflow_id:
+          type: string
+          description: Deterministic Temporal workflow ID for the execution intent
+        run_id:
+          type: string
+        migration_id:
+          type: string
+          format: uuid
+        workload_id:
+          type: string
+          format: uuid
+        target_weight:
+          type: integer
+        status:
+          type: string
+          enum: [accepted, running, succeeded, failed]
+        policy_input_hash:
+          type: string
+        approval_id:
+          type: string
+          format: uuid
+        error:
+          type: string
+    ExecutionStatus:
+      type: object
+      required: [workflow_id, migration_id, status]
+      properties:
+        workflow_id:
+          type: string
+        run_id:
+          type: string
+        migration_id:
+          type: string
+          format: uuid
+        status:
+          type: string
+        live_status:
+          type: string
+          description: Live Temporal status when the execution plane is reachable
+        live_run_id:
+          type: string
+        target_weight:
+          type: integer
+    PaginatedDrift:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/DriftReport"
+        next_cursor:
+          type: string
+          nullable: true
+    AuditEvent:
+      type: object
+      required: [action, result, created_at]
+      properties:
+        action:
+          type: string
+        result:
+          type: string
+          enum: [success, failure, denied]
+        created_at:
+          type: string
+          format: date-time
+        request_id:
+          type: string
+        actor_type:
+          type: string
+        actor_id:
+          type: string
+        policy_bundle_version:
+          type: string
+        policy_decision:
+          type: string
+        approval_id:
+          type: string
+        idempotency_key:
+          type: string
+        metadata:
+          type: object
+    PaginatedAuditEvents:
+      type: object
+      required: [migration_id, items]
+      properties:
+        migration_id:
+          type: string
+          format: uuid
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/AuditEvent"
+        request_id:
+          type: string
+    CreateMigrationRequest:
+      type: object
+      required: [workload_id, target_provider]
+      properties:
+        workload_id:
+          type: string
+          format: uuid
+        target_provider:
+          type: string
+          enum: [azure]
+        requested_rpo_seconds:
+          type: integer
+          minimum: 1
+        requested_rto_seconds:
+          type: integer
+          minimum: 1
+    MigrationRun:
+      type: object
+      required: [id, workload_id, status, current_step]
+      properties:
+        id:
+          type: string
+          format: uuid
+        workload_id:
+          type: string
+          format: uuid
+        status:
+          type: string
+        current_step:
+          type: string
+        request_id:
+          type: string
+        idempotency_key:
+          type: string
+        policy_bundle_version:
+          type: string
+    CutoverRequest:
+      type: object
+      required: [target_weight]
+      properties:
+        target_weight:
+          type: integer
+          enum: [0, 1, 5, 25, 50, 100]
+          description: Canonical canary stage only.
+        approval_id:
+          type: string
+          format: uuid
+          description: Required when the policy decision is approval_required; must be a fresh approved approval bound to the exact inputs.
+    CutoverResponse:
+      type: object
+      required: [migration_id, target_weight, stage_status]
+      properties:
+        migration_id:
+          type: string
+          format: uuid
+        target_weight:
+          type: integer
+        stage_status:
+          type: string
+          enum: [accepted, paused, denied]
+        request_id:
+          type: string
+    RollbackRequest:
+      type: object
+      properties:
+        reason:
+          type: string
+    ErrorEnvelope:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message, request_id]
+          properties:
+            code:
+              type: string
+            message:
+              type: string
+            request_id:
+              type: string
+            details:
+              type: object
+              additionalProperties: true
+    Empty:
+      type: object
+  responses:
+    Unauthorized:
+      description: Authentication required
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorEnvelope"
+    Forbidden:
+      description: Permission or policy denied
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorEnvelope"
+    BadRequest:
+      description: Invalid request
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorEnvelope"
+    NotFound:
+      description: Not found
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorEnvelope"

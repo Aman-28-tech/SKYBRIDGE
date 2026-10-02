@@ -1,0 +1,9 @@
+# mise toolchain (mirrors .tool-versions). `mise install` reproduces CI tools.
+[tools]
+python = "3.12.7"
+go = "1.23.4"
+node = "22.12.0"
+terraform = "1.9.8"
+opa = "1.4.2"
+buf = "1.50.0"
+vacuum = "0.9.4"

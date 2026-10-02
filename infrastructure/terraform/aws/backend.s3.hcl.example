@@ -1,0 +1,17 @@
+# Sandbox state backend values for the AWS root (git-safe template).
+#
+# Usage (never commit real values):
+#   cp backend.s3.hcl.example backend.s3.hcl   # backend.s3.hcl is git-ignored
+#   ${EDITOR} backend.s3.hcl                    # fill sandbox values
+#   terraform init -backend-config=backend.s3.hcl
+#
+# Backend auth uses the OIDC-assumed sandbox role (see docs/TERRAFORM_IAC.md);
+# no static keys. Bucket requirements: versioning Enabled, SSE-KMS
+# (cmk skybridge/<env>), public access blocked, OIDC-only write.
+bucket         = "skybridge-tfstate-<ACCOUNT>-<REGION>"
+key            = "aws/dev/network.tfstate"
+region         = "us-east-1"
+encrypt        = true
+use_lockfile   = true
+# kms_key_id supplied here per environment, never committed.
+# kms_key_id = "arn:aws:kms:<REGION>:<ACCOUNT>:key/<KEY-ID>"

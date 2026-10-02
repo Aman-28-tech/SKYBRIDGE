@@ -1,0 +1,39 @@
+# Terraform / local build artifacts. State files are NEVER committed.
+.terraform/
+*.tfstate
+*.tfstate.*
+crash.log
+override.tf
+override.tf.json
+# Local backend configs hold real bucket/account values: NEVER commit.
+backend.s3.hcl
+backend.azurerm.hcl
+*.auto.tfvars
+*.auto.tfvars.json
+# Go build outputs (binaries only — never match source directories)
+/control-plane
+/cdc-applier
+apps/control-plane/control-plane
+apps/cdc-applier/cdc-applier
+# Python caches
+__pycache__/
+.pytest_cache/
+.terraform-plugin-cache/
+# Private development-process material (assistant instructions, internal
+# planning, audit history). Never published to the public repository.
+.internal/
+# Local demo runtime artifacts (per-run tokens, logs, evidence copies).
+.demo-run/
+# Local editor / OS artifacts
+.DS_Store
+*.swp
+.idea/
+.vscode/
+
+# Node / Next.js build artifacts
+**/node_modules/
+**/.next/
+**/*.tsbuildinfo
+
+# Compiled local binaries
+workloads/cloudshop/api/api

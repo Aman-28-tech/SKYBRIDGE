@@ -1,0 +1,157 @@
+# Local laboratory: kind + LocalStack (where supported) + Temporal + PG + Redis + Redpanda + Azurite
+# Canonical: local-first by default; real cloud for provider-specific integration and milestone validation.
+# Usage: docker compose up -d && ./scripts/lab-health.sh
+# Cleanup: docker compose down -v
+name: skybridge-lab
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: skybridge
+      POSTGRES_PASSWORD: skybridge
+      POSTGRES_DB: skybridge
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./apps/control-plane/migrations/001_init.sql:/docker-entrypoint-initdb.d/001_init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U skybridge"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  cloudshop-db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: cloudshop
+      POSTGRES_PASSWORD: cloudshop
+      POSTGRES_DB: cloudshop
+    ports:
+      - "5433:5432"
+    command: ["postgres", "-c", "wal_level=logical", "-c", "max_replication_slots=4", "-c", "max_wal_senders=4"]
+    volumes:
+      - cloudshop-pgdata:/var/lib/postgresql/data
+      - ./workloads/cloudshop/migrations/001_init.sql:/docker-entrypoint-initdb.d/001_init.sql:ro
+      - ./workloads/cloudshop/migrations/002_cdc_events.sql:/docker-entrypoint-initdb.d/002_cdc_events.sql:ro
+      - ./workloads/cloudshop/migrations/003_admin_state.sql:/docker-entrypoint-initdb.d/003_admin_state.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U cloudshop"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # Local CDC target: same CloudShop schema, authoritative replay destination.
+  # Source remains cloudshop-db :5433 (authoritative until future cutover).
+  # No production credentials; local/dev only.
+  cloudshop-target-db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: cloudshop
+      POSTGRES_PASSWORD: cloudshop
+      POSTGRES_DB: cloudshop
+    ports:
+      - "5434:5432"
+    command: ["postgres", "-c", "wal_level=logical", "-c", "max_replication_slots=4", "-c", "max_wal_senders=4"]
+    volumes:
+      - cloudshop-target-pgdata:/var/lib/postgresql/data
+      - ./workloads/cloudshop/migrations/001_init.sql:/docker-entrypoint-initdb.d/001_init.sql:ro
+      - ./workloads/cloudshop/migrations/002_cdc_events.sql:/docker-entrypoint-initdb.d/002_cdc_events.sql:ro
+      - ./workloads/cloudshop/migrations/003_admin_state.sql:/docker-entrypoint-initdb.d/003_admin_state.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U cloudshop"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # Opt-in CDC runtime (Phase 7): start with `docker compose --profile cdc up -d`.
+  # Heavy image (~1GB); not part of the default lab loop.
+  connect:
+    image: debezium/connect:2.5.4.Final
+    profiles: ["cdc"]
+    ports:
+      - "8083:8083"
+    environment:
+      BOOTSTRAP_SERVERS: redpanda:9092
+      GROUP_ID: skybridge-connect
+      CONFIG_STORAGE_TOPIC: connect-configs
+      OFFSET_STORAGE_TOPIC: connect-offsets
+      STATUS_STORAGE_TOPIC: connect-status
+    depends_on:
+      - redpanda
+      - cloudshop-db
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  redpanda:
+    image: redpandadata/redpanda:v23.3.1
+    command:
+      - redpanda
+      - start
+      - --smp 1
+      - --memory 1G
+      - --overprovisioned
+      - --node-id 0
+      - --kafka-addr PLAINTEXT://0.0.0.0:9092
+      - --advertise-kafka-addr PLAINTEXT://redpanda:9092
+      - --pandaproxy-addr 0.0.0.0:8082
+      - --advertise-pandaproxy-addr redpanda:8082
+    ports:
+      - "9092:9092"
+      - "8082:8082"
+      - "9644:9644" # Admin API (GET /v1/status/ready); used by scripts/lab-health.sh
+    volumes:
+      - redpandadata:/var/lib/redpanda/data
+
+  azurite:
+    image: mcr.microsoft.com/azure-storage/azurite:3.28.0
+    command: ["azurite-blob", "--blobHost", "0.0.0.0", "--blobPort", "10000"]
+    ports:
+      - "10000:10000"
+    volumes:
+      - azuritedata:/data
+
+  temporal:
+    image: temporalio/auto-setup:1.24.2
+    environment:
+      DB: postgres12
+      DB_PORT: "5432"
+      POSTGRES_USER: skybridge
+      POSTGRES_PWD: skybridge
+      POSTGRES_SEEDS: postgres
+      DYNAMIC_CONFIG_FILE_PATH: config/dynamicconfig/docker.yaml
+    ports:
+      - "7233:7233"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  temporal-ui:
+    image: temporalio/ui:2.28.0
+    environment:
+      TEMPORAL_ADDRESS: temporal:7233
+      TEMPORAL_CORS_ORIGINS: http://localhost:8080
+    ports:
+      - "8080:8080"
+    depends_on:
+      - temporal
+
+volumes:
+  pgdata:
+  cloudshop-pgdata:
+  cloudshop-target-pgdata:
+  redisdata:
+  redpandadata:
+  azuritedata:

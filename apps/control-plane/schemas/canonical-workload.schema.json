@@ -1,0 +1,155 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://skybridge.local/schemas/canonical-workload.schema.json",
+  "title": "SKYBRIDGE Canonical Workload v1",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "name",
+    "compute",
+    "database",
+    "cache",
+    "object_storage",
+    "queue",
+    "requirements"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1
+    },
+    "compute": {
+      "type": "object",
+      "required": [
+        "orchestrator",
+        "replicas",
+        "cpu_millicores",
+        "memory_mib"
+      ],
+      "properties": {
+        "orchestrator": {
+          "const": "kubernetes"
+        },
+        "replicas": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "cpu_millicores": {
+          "type": "integer",
+          "minimum": 100
+        },
+        "memory_mib": {
+          "type": "integer",
+          "minimum": 128
+        }
+      },
+      "additionalProperties": false
+    },
+    "database": {
+      "type": "object",
+      "required": [
+        "engine",
+        "major_version",
+        "storage_gib"
+      ],
+      "properties": {
+        "engine": {
+          "const": "postgresql"
+        },
+        "major_version": {
+          "type": "string",
+          "pattern": "^[0-9]+$"
+        },
+        "storage_gib": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "extensions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "cache": {
+      "type": "object",
+      "required": [
+        "engine",
+        "authoritative"
+      ],
+      "properties": {
+        "engine": {
+          "const": "redis"
+        },
+        "authoritative": {
+          "const": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "object_storage": {
+      "type": "object",
+      "required": [
+        "required",
+        "versioning_required"
+      ],
+      "properties": {
+        "required": {
+          "type": "boolean"
+        },
+        "versioning_required": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    },
+    "queue": {
+      "type": "object",
+      "required": [
+        "delivery_semantics",
+        "duplicate_safe_consumer"
+      ],
+      "properties": {
+        "delivery_semantics": {
+          "const": "at_least_once"
+        },
+        "duplicate_safe_consumer": {
+          "const": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "requirements": {
+      "type": "object",
+      "required": [
+        "rpo_seconds",
+        "rto_seconds",
+        "private_data_plane"
+      ],
+      "properties": {
+        "rpo_seconds": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "rto_seconds": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "private_data_plane": {
+          "type": "boolean"
+        },
+        "availability_zones": {
+          "type": "integer",
+          "minimum": 1
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

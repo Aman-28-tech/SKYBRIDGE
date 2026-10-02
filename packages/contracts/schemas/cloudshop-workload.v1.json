@@ -1,0 +1,34 @@
+{
+  "schema_version": 1,
+  "name": "cloudshop",
+  "compute": {
+    "orchestrator": "kubernetes",
+    "replicas": 2,
+    "cpu_millicores": 500,
+    "memory_mib": 512
+  },
+  "database": {
+    "engine": "postgresql",
+    "major_version": "17",
+    "storage_gib": 20,
+    "extensions": []
+  },
+  "cache": {
+    "engine": "redis",
+    "authoritative": false
+  },
+  "object_storage": {
+    "required": true,
+    "versioning_required": true
+  },
+  "queue": {
+    "delivery_semantics": "at_least_once",
+    "duplicate_safe_consumer": true
+  },
+  "requirements": {
+    "rpo_seconds": 30,
+    "rto_seconds": 900,
+    "private_data_plane": true,
+    "availability_zones": 2
+  }
+}

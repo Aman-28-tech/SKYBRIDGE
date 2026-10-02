@@ -1,0 +1,99 @@
+{
+  "fixture": "skybridge local multi-cloud demo: AWS source observed state",
+  "provider": "aws",
+  "environment": "dev",
+  "workload": "cloudshop",
+  "authority": "authoritative",
+  "note": "Deterministic local fixture. Hostnames are example.invalid; there is no credential material and no real ARNs, no cloud reads.",
+  "account": "000000000000",
+  "region": "us-east-1",
+  "components": {
+    "compute": {
+      "resource_id": "arn:aws:eks:us-east-1:000000000000:cluster/cloudshop-dev-eks",
+      "orchestrator": "kubernetes",
+      "replicas": 2,
+      "cpu_millicores": 500,
+      "memory_mib": 512,
+      "kubernetes_version": "1.30",
+      "endpoint": "https://eks-cloudshop-dev.example.invalid",
+      "status": "active"
+    },
+    "database": {
+      "resource_id": "arn:aws:rds:us-east-1:000000000000:db:cloudshop-dev-pg",
+      "engine": "postgresql",
+      "major_version": "17",
+      "storage_gib": 20,
+      "extensions": [],
+      "private_networking": true,
+      "publicly_accessible": false,
+      "endpoint": "cloudshop-dev-pg.example.invalid",
+      "status": "available"
+    },
+    "cache": {
+      "resource_id": "arn:aws:elasticache:us-east-1:000000000000:cloudshop-dev-redis",
+      "engine": "redis",
+      "authoritative": false,
+      "warm_strategy": "lazy",
+      "ttl_seconds": 300,
+      "key_format": "product:{id}",
+      "endpoint": "cloudshop-dev-redis.example.invalid",
+      "status": "available"
+    },
+    "object-storage": {
+      "resource_id": "arn:aws:s3:::cloudshop-dev-000000000000",
+      "required": true,
+      "versioning_required": true,
+      "version_id_identity": false,
+      "identity_model": "logical-key-plus-sha256",
+      "endpoint": "https://s3.us-east-1.example.invalid/cloudshop-dev-000000000000",
+      "status": "available"
+    },
+    "queue": {
+      "resource_id": "arn:aws:sqs:us-east-1:000000000000:cloudshop-dev-jobs",
+      "delivery": "at_least_once",
+      "duplicate_safe_consumer": true,
+      "ordering": "no global ordering assumed",
+      "endpoint": "https://sqs.us-east-1.example.invalid/000000000000/cloudshop-dev-jobs",
+      "status": "available"
+    },
+    "identity": {
+      "resource_id": "arn:aws:iam::000000000000:role/SKYBRIDGE-dev-workload",
+      "least_privilege": true,
+      "federation": "oidc-or-managed-identity",
+      "long_lived_credentials": false,
+      "status": "active"
+    },
+    "network": {
+      "resource_id": "arn:aws:ec2:us-east-1:000000000000:vpc/vpc-demo0001",
+      "private_data_plane": true,
+      "isolation": "default-deny",
+      "public_database_endpoints": false,
+      "status": "available"
+    },
+    "routing": {
+      "resource_id": "arn:aws:elasticloadbalancing:us-east-1:000000000000:listener/app/cloudshop-dev/50dc6c495c0c9188",
+      "origins": ["aws", "azure"],
+      "canary_stages": [0, 1, 5, 25, 50, 100],
+      "endpoint": "https://cloudshop-dev.example.invalid",
+      "status": "active"
+    },
+    "observability": {
+      "resource_id": "arn:aws:logs:us-east-1:000000000000:log-group:/skybridge/cloudshop-dev",
+      "correlation": true,
+      "metrics": true,
+      "logs": true,
+      "traces": true,
+      "status": "active"
+    },
+    "security": {
+      "managed_identity": true,
+      "encryption_at_rest": true,
+      "tls": true,
+      "private_endpoints": true,
+      "audit_export": true,
+      "network_policy": "default-deny",
+      "long_lived_credentials": false,
+      "status": "enforced"
+    }
+  }
+}

@@ -1,0 +1,33 @@
+name: contracts
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  contracts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install validators
+        run: pip install jsonschema pyyaml
+      - name: JSON Schema + fixtures + OpenAPI parse
+        run: python3 scripts/validate_contracts.py --all
+      - name: Setup OPA (pinned)
+        uses: open-policy-agent/setup-opa@v2
+        with:
+          version: v1.4.2
+      - name: Rego tests
+        run: opa test packages/contracts/policy -v
+      - name: Setup Buf (pinned)
+        uses: bufbuild/buf-setup-action@v1
+        with:
+          version: v1.50.0
+      - name: Protobuf build
+        run: buf build packages/contracts/proto
+      # OpenAPI lint (vacuum pinned via npm) — uncomment once network allows:
+      # - run: npm i -g @quobix/vacuum@0.9.4 && vacuum lint packages/contracts/openapi/skybridge.yaml

@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://skybridge.local/schemas/capability-registry.schema.json",
+  "title": "SKYBRIDGE Capability Registry v1",
+  "type": "object",
+  "required": ["version", "capabilities"],
+  "properties": {
+    "version": { "const": 1 },
+    "capabilities": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["id", "provider", "service", "supported", "evidence"],
+        "properties": {
+          "id": { "type": "string", "minLength": 1 },
+          "provider": { "type": "string", "enum": ["aws", "azure"] },
+          "service": { "type": "string", "minLength": 1 },
+          "supported": { "type": "boolean" },
+          "constraints": { "type": "object" },
+          "evidence": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "required": ["type", "ref"],
+              "properties": {
+                "type": { "type": "string", "enum": ["provider_documentation", "integration_test"] },
+                "ref": { "type": "string", "minLength": 1 }
+              },
+              "additionalProperties": false
+            }
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

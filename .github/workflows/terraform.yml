@@ -1,0 +1,71 @@
+name: terraform
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  go:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.23.4"
+      - name: Build
+        working-directory: apps/control-plane
+        run: go build ./...
+      - name: Vet
+        working-directory: apps/control-plane
+        run: go vet ./...
+      - name: Test with race detector
+        working-directory: apps/control-plane
+        run: go test -race ./...
+  fmt:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.9.8
+      - name: Terraform fmt check
+        run: terraform fmt -check -recursive infrastructure/terraform
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.9.8
+      - name: Validate all modules and roots
+        run: |
+          for d in infrastructure/terraform/modules/*/ infrastructure/terraform/aws infrastructure/terraform/azure; do
+            terraform -chdir="$d" init -backend=false -input=false
+            terraform -chdir="$d" validate
+          done
+  cred-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: No long-lived credentials in IaC
+        run: |
+          # Fails on committed static cloud credentials. DB passwords must be
+          # variables (sensitive, no default), never literals.
+          if grep -rniE 'AKIA[0-9A-Z]{16}|aws_secret_access_key|client_secret\s*=|password\s*=\s*"[^"]+"|-----BEGIN [A-Z ]*PRIVATE KEY-----' infrastructure --include='*.tf'; then
+            echo "committed credential material found"; exit 1
+          fi
+          echo "cred scan clean"
+  no-apply-guard:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: No automatic apply/destroy jobs
+        run: |
+          # No workflow may run apply or destroy. Protected applies happen only
+          # through the documented manual boundary with approval records.
+          # (The grep -v drops this guard's own pattern line.)
+          if grep -rn "terraform apply\|terraform destroy" .github/ | grep -v "grep -rn"; then
+            echo "automatic apply/destroy job found"; exit 1
+          fi
+          echo "no apply/destroy jobs"

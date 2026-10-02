@@ -1,0 +1,74 @@
+syntax = "proto3";
+
+package skybridge.migration.v1;
+
+import "google/protobuf/timestamp.proto";
+
+// Never reuse deleted field numbers. Additive changes only, or new package version.
+
+message ToolMetadata {
+  string request_id = 1;
+  string run_id = 2;
+  string workload_id = 3;
+  string idempotency_key = 4;
+  string policy_bundle_version = 5;
+  int32 schema_version = 6;
+  string actor_type = 7;
+  string actor_id = 8;
+}
+
+message MigrationStep {
+  string id = 1;
+  string migration_id = 2;
+  uint32 order = 3;
+  string type = 4;
+  string status = 5;
+  uint32 attempt = 6;
+  ToolMetadata tool_metadata = 7;
+  string failure_code = 8;
+}
+
+message MigrationRun {
+  string id = 1;
+  string workload_id = 2;
+  string source_provider = 3;
+  string target_provider = 4;
+  string status = 5;
+  string current_step = 6;
+  google.protobuf.Timestamp started_at = 7;
+  google.protobuf.Timestamp completed_at = 8;
+  // Reserved: never reuse 9+ after deletion.
+  string request_id = 9;
+  string idempotency_key = 10;
+  int32 schema_version = 11;
+  string policy_bundle_version = 12;
+  string plan_id = 13;
+}
+
+message ReplicationStatus {
+  string migration_id = 1;
+  string source_lsn = 2;
+  string target_lsn = 3;
+  // Time-based freshness: target_apply_observation_time - source_commit_timestamp.
+  double cdc_lag_seconds = 4;
+  string status = 5;
+  uint64 applied_events = 6;
+  string request_id = 7;
+  string run_id = 8;
+  string workload_id = 9;
+  int64 source_commit_unix = 10;
+  int64 apply_observation_unix = 11;
+}
+
+message CutoverRequest {
+  string migration_id = 1;
+  uint32 target_weight = 2;
+  string idempotency_key = 3;
+  string request_id = 4;
+  string run_id = 5;
+  string workload_id = 6;
+  int32 schema_version = 7;
+  string policy_bundle_version = 8;
+  bool read_only_canary = 9;
+  string write_ownership = 10;
+}
